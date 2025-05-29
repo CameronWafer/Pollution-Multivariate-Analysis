@@ -1,0 +1,42 @@
+---
+title: "STAT 419 final project"
+author: "Anaïs Lohier"
+format: 
+  html:
+    code-tools: true
+    toc: true
+    embed-resources: true
+    html-table-processing: none
+    code-fold: false
+editor: source
+execute: 
+  error: true
+  echo: true
+  message: false
+  warning: false
+---
+
+# Load Data and Functions
+
+```{r}
+library(ggplot2)
+library(GGally)
+
+pollution <- read.csv("pollution_419.csv")
+
+poll_vars <- pollution[, !(names(pollution) %in% c("MORTRANK"))]
+
+# 1. CORRELATION MATRIX
+cor_matrix <- cor(poll_vars)
+round(cor_matrix, 3)
+
+# 2. SCATTERPLOT MATRIX WITH GGally
+ggpairs(poll_vars,
+        title = "Scatterplot Matrix of Pollution Variables",
+        upper = list(continuous = wrap("cor", size = 3)),
+        lower = list(continuous = wrap("points", size = 1, alpha = 0.7)),
+        diag = list(continuous = wrap("densityDiag", alpha = 0.5)))
+```
+The correlation matrix and scatterplot matrix reveal that all variable pairs have correlation coefficients below 0.5, indicating that multicollinearity is not severe. The strongest associations are between PRECIP and EDUC (r = –0.49), PRECIP and NOX (r = –0.49), and NOX and SO2 (r = 0.41). These fall within the range of weak correlations (0.40 – 0.75), suggesting some overlap in the information they capture, particularly among the pollution-related variables NOX and SO2.
+
+Since none of the correlations exceed the threshold for moderate or strong collinearity, all five quantitative variables (PRECIP, EDUC, NONWHITE, NOX, and SO2) can be retained for the following classification analysis. The scatterplot matrix further confirms that while some pairs exhibit linear relationships, all associations are either weak or very weak, and no pairwise relationships are strong enough to justify exclusion from the model.
