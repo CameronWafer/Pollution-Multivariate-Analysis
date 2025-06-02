@@ -63,5 +63,104 @@ discrim(pollution_419[,-1], pollution_419[,1])
 \[ z_1= -0.1722439 y_1 + 0.7507216 y_2 -1.7675389 y_3 + 0.9193970 y_4 - 1.6834803 y_5 z_2= 5.0820234 y_1 - 0.3131456 y_2 -5.2476849 y_3 - 9.0326716 y_4 + 1.4476618 y_5 \]
 
 ```{r}
-discr.sig(pollution_419[,-1],pollution_419[,1])
+discriminant_significance_results <- discr.sig(pollution_419[,-1], pollution_419[,1])
+discriminant_significance_results
 ```
+
+```{r}
+for (i in 1:nrow(discriminant_significance_results)) {
+  ld_name <- rownames(discriminant_significance_results)[i]
+  p_val <- discriminant_significance_results[i, "p.values"]
+  
+  cat(paste0("\nFor ", ld_name, ":\n"))
+  cat(paste0("  Null Hypothesis (H0): The current discriminant function and all subsequent functions (if any) do not significantly discriminate between the groups.\n"))
+  cat(paste0("  Alternative Hypothesis (HA): The current discriminant function and at least one subsequent function (if any) significantly discriminate between the groups.\n"))
+  cat(paste0("  Test Statistic (V): ", round(discriminant_significance_results[i, "V"], 4), "\n"))
+  cat(paste0("  P-value: ", round(p_val, 4), "\n"))
+  
+  if (p_val < 0.05) {
+    cat(paste0("  Conclusion: Since the p-value (", round(p_val, 5), ") is less than 0.05, we reject the null hypothesis. This indicates that this discriminant function and potentially subsequent ones significantly contribute to discriminating between the groups.\n"))
+  } else {
+    cat(paste0("  Conclusion: Since the p-value (", round(p_val, 5), ") is greater than or equal to 0.05, we fail to reject the null hypothesis. This indicates that this discriminant function and subsequent ones do not significantly contribute to discriminating between the groups.\n"))
+  }
+}
+
+```
+
+
+
+### Tests of Significance for Each Non-Grouping Variable (Univariate)
+
+```{r}
+m1_summary <- summary.aov(manova(as.matrix(pollution_419[,-1]) ~ pollution_419[,1]))
+for (i in 1:length(m1_summary)) {
+  var_name <- names(m1_summary)[i]
+  aov_table <- m1_summary[[i]]
+  
+  # Extract the row corresponding to the group effect
+  group_row <- aov_table[rownames(aov_table) == "pollution_419[, 1]", ]
+  
+  if (nrow(group_row) > 0) {
+    f_stat <- group_row["F value"]
+    p_val <- group_row["Pr(>F)"]
+    
+    cat(paste0("\nFor variable: ", var_name, "\n"))
+    cat(paste0("  Null Hypothesis (H0): The mean of '", var_name, "' is the same across all groups, after adjusting for other variables.\n")) # This null is slightly simplified for univariate.
+    cat(paste0("  Alternative Hypothesis (HA): The mean of '", var_name, "' differs across at least two groups, after adjusting for other variables.\n"))
+    cat(paste0("  Test Statistic (F-value): ", round(f_stat, 4), "\n"))
+    cat(paste0("  P-value: ", round(p_val, 4), "\n"))
+    
+    if (p_val < 0.05) {
+      cat(paste0("  Conclusion: Since the p-value (", round(p_val, 4), ") is less than 0.05, we reject the null hypothesis. This indicates that '", var_name, "' significantly differs across the groups, after considering the presence of other variables in the overall model context.\n"))
+    } else {
+      cat(paste0("  Conclusion: Since the p-value (", round(p_val, 4), ") is greater than or equal to 0.05, we fail to reject the null hypothesis. This indicates that '", var_name, "' does not significantly differ across the groups, after considering the presence of other variables in the overall model context.\n"))
+    }
+  }
+}
+
+```
+
+```{r}
+a_stand <- discrim(pollution_419[,-1], pollution_419[,1])$a.stand
+z_scores <- as.matrix(pollution_419[,-1]) %*% a_stand
+colnames(z_scores) <- c("LD1", "LD2")
+
+# Add the group variable back for plotting
+plot_data <- as.data.frame(z_scores)
+plot_data$Group <- as.factor(pollution_419[,1])
+
+library(ggplot2)
+
+# Calculate centroids for each group
+centroids <- aggregate(cbind(LD1, LD2) ~ Group, data = plot_data, FUN = mean)
+
+# Get the default ggplot2 colors for the number of levels in your Group factor
+num_groups <- nlevels(plot_data$Group)
+group_colors <- scales::hue_pal()(num_groups)
+names(group_colors) <- levels(plot_data$Group)
+
+# Add these colors to the centroids dataframe
+centroids$centroid_fill_color <- group_colors[centroids$Group]
+
+# Create the plot
+discriminant_plot <- ggplot(plot_data, aes(x = LD1, y = LD2, color = Group, shape = Group)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_point(data = centroids, aes(x = LD1, y = LD2),
+             size = 6, shape = 21, color = "black", stroke = 1.2,
+             fill = centroids$centroid_fill_color) +
+  labs(title = "Plot of First Two LDs",
+       x = "LD1",
+       y = "LD2") +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+
+print(discriminant_plot)
+```
+
+The plot displays the data points projected onto the first two linear discriminant functions (LD1 and LD2). Each point is colored and shaped according to its original group, and black stars indicate the centroids (mean scores) for each group in this discriminant space.</br></br>
+LD1 appears to be the primary dimension separating the groups, as the group centroids are distinctly spread along the x-axis (LD1). The groups seem to be fairly well separated along LD1, with minimal overlap between the core clusters of points for different groups.</br></br>
+LD2 contributes to a lesser extent in separating the groups, as there is less dispersion and separation along the y-axis. While LD2 might provide some additional separation, especially for points that overlap on LD1, its primary role seems to be minor compared to LD1.</br></br>
+Overall, the plot suggests that the discriminant functions are effective in separating the groups, especially along the first discriminant axis. The distinct clustering and separation of the group centroids indicate good discriminatory power. There might be a few overlapping points, suggesting some misclassification, but the general pattern shows good group differentiation based on the derived discriminant functions.
+
+
