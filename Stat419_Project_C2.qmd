@@ -1,0 +1,67 @@
+---
+title: "Stat419_Project_C2"
+format: html
+editor: visual
+---
+
+# Data and Functions
+
+```{r}
+
+pollution_419 <- read.csv("pollution_419.csv")
+View(pollution_419)
+
+discrim <- function(Y, group){
+Y <- data.matrix(Y)
+group <- as.factor(group)
+m1 <- manova(Y ~ group)
+nu.h <- summary(m1)$stats[1]
+nu.e <- summary(m1)$stats[2]
+p <- ncol(Y)
+SS <- summary(m1)$SS
+E.inv.H <- solve(SS$Residuals) %*% SS$group
+eig <- eigen(E.inv.H)
+s <- min(nu.h, p)
+lambda <- Re(eig$values[1:s])
+a <- Re(eig$vectors[,1:s])
+a.star <- (sqrt(diag(SS$Residuals/nu.e)) * a)
+return(list("a"=a, "a.stand"=a.star))
+}
+
+discr.sig <- function(Y, group){
+Y <- data.matrix(Y)
+group <- as.factor(group)
+m1 <- manova(Y ~ group)
+sums <- summary(m1)
+evals <- sums$Eigenvalues
+nu.e <- m1$df
+nu.h <- m1$rank-1
+k <- nu.h + 1
+p <- ncol(m1$coef)
+N <- nu.e + nu.h + 1
+s <- min(p, nu.h)
+lam <- numeric(s)
+dfs <- numeric(s)
+for(m in 1:s){
+lam[m] <- prod(1/(1+evals[m:s]))
+dfs[m] <- (p-m+1)*(k-m)
+}
+V <- -(N - 1 - .5*(p+k))*log(lam)
+p.val <- 1 - pchisq(V, dfs)
+out <- cbind(Lambda=lam, V, p.values=p.val)
+dimnames(out)[[1]] <- paste("LD",1:s,sep="")
+return(out)
+}
+```
+
+There were no variables removed in Section C.1, we'll proceed with analysis of all variables.
+
+```{r}
+discrim(pollution_419[,-1], pollution_419[,1])
+```
+
+\[ z_1= -0.1722439 y_1 + 0.7507216 y_2 -1.7675389 y_3 + 0.9193970 y_4 - 1.6834803 y_5 z_2= 5.0820234 y_1 - 0.3131456 y_2 -5.2476849 y_3 - 9.0326716 y_4 + 1.4476618 y_5 \]
+
+```{r}
+discr.sig(pollution_419[,-1],pollution_419[,1])
+```
